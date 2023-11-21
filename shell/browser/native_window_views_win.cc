@@ -10,10 +10,12 @@
 #include "base/win/scoped_handle.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "shell/browser/browser.h"
+#include "shell/browser/javascript_environment.h"
 #include "shell/browser/native_window_views.h"
 #include "shell/browser/ui/views/root_view.h"
 #include "shell/browser/ui/views/win_frame_view.h"
 #include "shell/common/electron_constants.h"
+#include "shell/common/node_includes.h"
 #include "ui/display/display.h"
 #include "ui/display/win/screen_win.h"
 #include "ui/gfx/geometry/insets.h"
@@ -451,8 +453,15 @@ void NativeWindowViews::HandleSizeEvent(WPARAM w_param, LPARAM l_param) {
       // multiple times for one resize because of the SetWindowPlacement call.
       if (w_param == SIZE_MAXIMIZED &&
           last_window_state_ != ui::SHOW_STATE_MAXIMIZED) {
-        if (last_window_state_ == ui::SHOW_STATE_MINIMIZED)
+        // We're notifying twice here - if the first handler throws an error,
+        // it will corrupt the async hook stack. We need to put this in its
+        // own callback scope to prevent async_hooks crashes.
+        if (last_window_state_ == ui::SHOW_STATE_MINIMIZED) {
+          auto* isolate = JavascriptEnvironment::GetIsolate();
+          node::CallbackScope scope(isolate, v8::Object::New(isolate), {0, 0});
           NotifyWindowRestore();
+        }
+
         last_window_state_ = ui::SHOW_STATE_MAXIMIZED;
         NotifyWindowMaximize();
         ResetWindowControls();
