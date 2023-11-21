@@ -458,6 +458,7 @@ void NativeWindowViews::HandleSizeEvent(WPARAM w_param, LPARAM l_param) {
         // own callback scope to prevent async_hooks crashes.
         if (last_window_state_ == ui::SHOW_STATE_MINIMIZED) {
           auto* isolate = JavascriptEnvironment::GetIsolate();
+          v8::HandleScope handle_scope(isolate);
           node::CallbackScope scope(isolate, v8::Object::New(isolate), {0, 0});
           NotifyWindowRestore();
         }
