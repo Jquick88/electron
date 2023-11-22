@@ -657,6 +657,20 @@ describe('node feature', () => {
       const [code] = await once(child, 'exit');
       expect(code).to.equal(0);
     });
+
+    ifit(process.platform === 'darwin')('is disabled when invoked by other apps in ELECTRON_RUN_AS_NODE mode', (done) => {
+      const script = path.join(fixtures, 'api', 'fork-with-node-options.js');
+      // Invoke Electron by using the system node binary as middle layer, so the
+      // check of NODE_OPTIONS will think the process is started by other apps.
+      childProcess.exec(`node "${script}" "${process.execPath}"`, (error, stdout, stderr) => {
+        if (error) {
+          done(error);
+          return;
+        }
+        expect(String(stderr)).to.include('NODE_OPTIONS is disabled because this process is invoked by other apps');
+        done();
+      });
+    });
   });
 
   describe('Node.js cli flags', () => {
